@@ -18,7 +18,7 @@ Installation
 
 .. code-block:: bash
 
-    pip install git+https://github.com/Abstract-Tech/tutor-contrib-keycloak
+    pip install tutor-contrib-keycloak
 
 Usage
 *****
@@ -63,6 +63,7 @@ Notes
   to let the LMS fall back to the ``uid`` OID attribute, then the SAML NameID (this client uses NameID format
   ``username``, so a renamed user would look like a new person; ``persistent`` is safer). Re-run
   ``tutor dev do keycloak-setup`` after changing it.
+
 License
 *******
 
