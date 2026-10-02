@@ -1,0 +1,130 @@
+{
+  "realm": "{{ KEYCLOAK_REALM }}",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": {{ "true" if KEYCLOAK_REGISTRATION_ALLOWED else "false" }},
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"unmanagedAttributePolicy\": \"ENABLED\", \"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"email\", \"displayName\": \"${email}\", \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"validations\": {\"length\": {\"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"validations\": {\"length\": {\"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}]}"
+          ]
+        }
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "{{ KEYCLOAK_SP_ENTITY_ID }}",
+      "name": "Open edX LMS (local)",
+      "protocol": "saml",
+      "enabled": true,
+      "rootUrl": "http://{{ LMS_HOST }}:8000",
+      "baseUrl": "http://{{ LMS_HOST }}:8000",
+      "redirectUris": [
+        "http://{{ LMS_HOST }}:8000/*"
+      ],
+      "frontchannelLogout": true,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [],
+      "optionalClientScopes": [],
+      "attributes": {
+        "saml_assertion_consumer_url_post": "http://{{ LMS_HOST }}:8000/auth/complete/tpa-saml/",
+        "saml_assertion_consumer_url_redirect": "http://{{ LMS_HOST }}:8000/auth/complete/tpa-saml/",
+        "saml.authnstatement": "true",
+        "saml.server.signature": "true",
+        "saml.assertion.signature": "true",
+        "saml.signature.algorithm": "RSA_SHA256",
+        "saml.client.signature": "false",
+        "saml_name_id_format": "username",
+        "saml_force_name_id_format": "false",
+        "saml_idp_initiated_sso_url_name": "",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "firstName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.nameformat": "Basic",
+            "user.attribute": "firstName",
+            "friendly.name": "firstName",
+            "attribute.name": "firstName"
+          }
+        },
+        {
+          "name": "lastName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.nameformat": "Basic",
+            "user.attribute": "lastName",
+            "friendly.name": "lastName",
+            "attribute.name": "lastName"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.nameformat": "Basic",
+            "user.attribute": "email",
+            "friendly.name": "email",
+            "attribute.name": "email"
+          }
+        },
+        {
+          "name": "username",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.nameformat": "Basic",
+            "user.attribute": "username",
+            "friendly.name": "username",
+            "attribute.name": "username"
+          }
+        },
+        {
+          "name": "attr_user_permanent_id",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.nameformat": "Basic",
+            "user.attribute": "id",
+            "friendly.name": "attr_user_permanent_id",
+            "attribute.name": "attr_user_permanent_id"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "{{ KEYCLOAK_TEST_USER }}",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "{{ KEYCLOAK_TEST_USER }}@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "{{ KEYCLOAK_TEST_PASSWORD }}",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

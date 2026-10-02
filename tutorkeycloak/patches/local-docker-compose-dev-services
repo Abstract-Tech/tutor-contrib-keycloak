@@ -1,0 +1,18 @@
+keycloak:
+  image: {{ KEYCLOAK_DOCKER_IMAGE }}
+  restart: unless-stopped
+  command: start-dev --import-realm
+  volumes:
+    - ../plugins/keycloak/apps/keycloak:/opt/keycloak/data/import:ro
+  ports:
+    - "{{ KEYCLOAK_PORT }}:{{ KEYCLOAK_PORT }}"
+  environment:
+    KC_BOOTSTRAP_ADMIN_USERNAME: "{{ KEYCLOAK_ADMIN_USER }}"
+    KC_BOOTSTRAP_ADMIN_PASSWORD: "{{ KEYCLOAK_ADMIN_PASSWORD }}"
+    KC_HTTP_PORT: "{{ KEYCLOAK_PORT }}"
+    KC_HOSTNAME: "{{ KEYCLOAK_URL }}"
+  networks:
+    default:
+      # same hostname works from the browser (127.0.0.1) and from the LMS container
+      aliases:
+        - {{ KEYCLOAK_HOST }}

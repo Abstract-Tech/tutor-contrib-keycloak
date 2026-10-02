@@ -1,0 +1,75 @@
+# Create SAML SP config + Keycloak IdP provider in the LMS (idempotent) and pull IdP metadata.
+./manage.py lms shell <<'PY'
+import json, subprocess, tempfile, os
+from django.contrib.sites.models import Site
+from common.djangoapps.third_party_auth.models import SAMLConfiguration, SAMLProviderConfig
+
+# tutor dev serves the LMS on :8000, and the Site matched per request includes the port
+site = Site.objects.filter(domain="{{ LMS_HOST }}:8000").first() or Site.objects.get(domain="{{ LMS_HOST }}")
+
+sp = SAMLConfiguration.current(site.id, "default")
+if not sp.private_key:
+    with tempfile.TemporaryDirectory() as d:
+        subprocess.run(
+            ["openssl", "req", "-new", "-x509", "-days", "3652", "-nodes", "-subj", "/CN=openedx-local",
+             "-keyout", os.path.join(d, "k"), "-out", os.path.join(d, "c")],
+            check=True, capture_output=True)
+        sp.private_key = open(os.path.join(d, "k")).read()
+        sp.public_key = open(os.path.join(d, "c")).read()
+sp.site = site
+sp.enabled = True
+sp.entity_id = "{{ KEYCLOAK_SP_ENTITY_ID }}"
+sp.org_info_str = json.dumps({"en-US": {"url": "http://{{ LMS_HOST }}:8000", "displayname": "Open edX local", "name": "openedx-local"}})
+sp.save()
+# The SP metadata view caches the lookup keyed by str(site); save() only clears the site_id key.
+from edx_django_utils.cache import TieredCache
+TieredCache.delete_all_tiers(SAMLConfiguration.cache_key_name(site, "default"))
+
+idp = SAMLProviderConfig.current("keycloak")
+idp.site = site
+idp.enabled = True
+idp.name = idp.display_name = "Keycloak (local)"
+idp.slug = "keycloak"
+idp.backend_name = "tpa-saml"
+idp.entity_id = "{{ KEYCLOAK_URL }}/realms/{{ KEYCLOAK_REALM }}"
+idp.metadata_source = "{{ KEYCLOAK_URL }}/realms/{{ KEYCLOAK_REALM }}/protocol/saml/descriptor"
+idp.attr_user_permanent_id = "{{ KEYCLOAK_PERMANENT_ID_ATTR }}"
+idp.attr_first_name = "firstName"
+idp.attr_last_name = "lastName"
+idp.attr_email = "email"
+idp.attr_username = "{{ KEYCLOAK_USERNAME_ATTR }}"
+idp.attr_full_name = ""
+idp.saml_configuration = SAMLConfiguration.current(site.id, "default")
+idp.skip_email_verification = True
+idp.skip_registration_form = True
+idp.send_to_registration_first = True
+idp.visible = True
+idp.automatic_refresh_enabled = False  # LMS refresh job rejects http metadata URLs
+idp.save()
+print("keycloak SAML provider configured")
+PY
+
+# The LMS refuses plain-HTTP metadata URLs (`saml --pull`), so fetch it here with the
+# LMS's own parser/saver. Keycloak may still be booting: retry.
+./manage.py lms shell <<'PY'
+import sys, time, requests
+from lxml import etree
+from common.djangoapps.third_party_auth.utils import parse_metadata_xml, create_or_update_bulk_saml_provider_data
+from common.djangoapps.third_party_auth.models import SAMLProviderConfig
+
+idp = SAMLProviderConfig.current("keycloak")
+for i in range(30):
+    try:
+        r = requests.get(idp.metadata_source, timeout=10)
+        r.raise_for_status()
+        xml = etree.fromstring(r.content, etree.XMLParser(remove_comments=True))
+        keys, sso_url, expires_at = parse_metadata_xml(xml, idp.entity_id)
+        create_or_update_bulk_saml_provider_data(idp.entity_id, keys, sso_url, expires_at)
+        print("keycloak IdP metadata stored")
+        break
+    except Exception as e:
+        print("waiting for Keycloak (%s/30): %s" % (i + 1, e))
+        time.sleep(4)
+else:
+    print("WARNING: metadata fetch failed; start Keycloak, then re-run: tutor dev do keycloak-setup")
+PY
