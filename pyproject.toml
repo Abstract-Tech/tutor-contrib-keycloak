@@ -5,8 +5,7 @@
 name = "tutor-contrib-keycloak"
 description = "keycloak plugin for Tutor"
 authors = [
-  { name = "Emad Rad"},
-  { email = "emad.ehsnarad@gmail.com" },
+  { name = "Emad Rad", email = "emad.ehsanrad@gmail.com" },
 ]
 license = { text = "AGPL-3.0-only" }
 
@@ -30,13 +29,14 @@ dependencies = [
     "tutor>=19.0.0,<23.0.0",
 ]
 
-# These fields will be set by hatch_build.py
 dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
     "tutor[dev]>=19.0.0,<23.0.0",
     "ruff",
+    "build",
+    "twine",
 ]
 
 [tool.hatch.version]
