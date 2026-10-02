@@ -3,7 +3,7 @@
 SRC_DIRS = ./tutorkeycloak
 
 # Warning: These checks are not necessarily run on every PR.
-test: test-lint test-types test-format  # Run some static checks.
+test: test-lint test-types test-format test-build  # Run some static checks.
 
 test-format: ## Run code formatting tests
 	ruff format --check --diff ${SRC_DIRS}
@@ -13,6 +13,13 @@ test-lint: ## Run code linting tests
 
 test-types: ## Run type checks.
 	mypy --exclude=templates --ignore-missing-imports --implicit-reexport --strict ${SRC_DIRS}
+
+test-build: build ## Build the package and check metadata
+	twine check dist/*
+
+build: ## Build sdist and wheel into dist/
+	rm -rf dist
+	python -m build
 
 format: ## Format code
 	ruff format ${SRC_DIRS}
